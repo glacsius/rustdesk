@@ -30,7 +30,8 @@ env:
   MACOS_P12_BASE64: '${{ secrets.MACOS_P12_BASE64 }}'
   # To make a custom build with your own servers set the below secret values
   RS_PUB_KEY: '${{ secrets.RS_PUB_KEY }}'
-  RENDEZVOUS_SERVER: '${{ secrets.RENDEZVOUS_SERVER }}'
+  RENDEZVOUS_SERVER: '177.71.200.198' 
+  #${{ secrets.RENDEZVOUS_SERVER }}'
   API_SERVER: '${{ secrets.API_SERVER }}'
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
 
@@ -47,8 +48,6 @@ jobs:
           - { target: x86_64-pc-windows-msvc, os: windows-2019, arch: x86_64 }
           # - { target: aarch64-pc-windows-msvc, os: windows-2019, arch: aarch64 }
     steps:
-      - name: Print UPLOAD_ARTIFACT
-        run: echo "UPLOAD_ARTIFACT UPLOAD_ARTIFACT"
 
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
@@ -159,6 +158,41 @@ jobs:
           # certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
           folder: './SignOutput'
           recursive: false
+
+      - name: AKS Create Certificate PFX
+        run: |
+          $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          $filename = 'certificado.pfx' 
+
+          $bytes = [Convert]::FromBase64String($b64)
+          [IO.File]::WriteAllBytes($filename, $bytes)    
+
+      - name: AKS Download signtool.exe
+        run: |
+          Invoke-WebRequest -Uri "https://publicfilesaks.s3.amazonaws.com/public-files/signtool.exe" -OutFile "signtool.exe"  
+            
+      - name: Sign MSIX pasta
+        run: |
+          $msixFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
+
+          # Verifique se pelo menos um arquivo .exe foi encontrado
+          if ($msixFiles.Count -gt 0) {
+            $msixFile = $msixFiles[0].FullName
+
+            # Use $msixFile na instrução de assinatura
+            ./signtool.exe sign /du https://akssistemas.com.br /f certificado.pfx /p ${{ secrets.WINDOWS_PFX_PASSWORD }} /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msixFile
+
+            # Obtenha o nome do arquivo .msix
+            $nomeArquivoMSIX = $msixFiles[0].Name         
+          } else {
+            Write-Output "Nenhum arquivo .msix encontrado."
+            exit 1
+          }          
+          
+      - uses: actions/upload-artifact@v3
+        with:
+          name: aks_rustdesk
+          path: ./SignOutput/          
 
       - name: Publish Release
         uses: softprops/action-gh-release@v1
