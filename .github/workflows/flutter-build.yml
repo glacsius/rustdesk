@@ -48,7 +48,7 @@ jobs:
           # - { target: aarch64-pc-windows-msvc, os: windows-2019, arch: aarch64 }
     steps:
       - name: Print UPLOAD_ARTIFACT
-        run: echo "UPLOAD_ARTIFACT: $UPLOAD_ARTIFACT"
+        run: echo "UPLOAD_ARTIFACT UPLOAD_ARTIFACT"
 
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
