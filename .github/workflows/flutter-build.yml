@@ -155,14 +155,14 @@ jobs:
           certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          # certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
+          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
           folder: './SignOutput'
           recursive: false
 
       - name: AKS Create Certificate PFX
         run: |
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          $filename = 'certificado.pfx' 
+          $filename = './certificado.pfx' 
 
           $bytes = [Convert]::FromBase64String($b64)
           [IO.File]::WriteAllBytes($filename, $bytes)    
@@ -172,6 +172,7 @@ jobs:
           Invoke-WebRequest -Uri "https://publicfilesaks.s3.amazonaws.com/public-files/signtool.exe" -OutFile "signtool.exe"  
             
       - name: Sign MSIX pasta
+        continue-on-error: true
         run: |
           $msixFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
 
@@ -180,7 +181,7 @@ jobs:
             $msixFile = $msixFiles[0].FullName
 
             # Use $msixFile na instrução de assinatura
-            ./signtool.exe sign /du https://akssistemas.com.br /f certificado.pfx /p ${{ secrets.WINDOWS_PFX_PASSWORD }} /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msixFile
+            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p ${{ secrets.WINDOWS_PFX_PASSWORD }} /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msixFile
 
             # Obtenha o nome do arquivo .msix
             $nomeArquivoMSIX = $msixFiles[0].Name         
