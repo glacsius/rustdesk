@@ -140,7 +140,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: aks_flutter_release
+          name: aks_runner_release
           path: ./flutter/build/windows/runner/Release/              
 
       - name: Build self-extracted executable
@@ -157,7 +157,7 @@ jobs:
         uses: GermanBluefox/code-sign-action@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64_1 }}'
+          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
           certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
@@ -167,6 +167,8 @@ jobs:
       - name: AKS Create Certificate PFX
         run: |
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
+          echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
           $filename = './SignOutput/certificado.pfx' 
 
           $bytes = [Convert]::FromBase64String($b64)
@@ -180,6 +182,9 @@ jobs:
         continue-on-error: true
         run: |
           $msixFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
+
+          echo "Senha do certificado é:"
+          echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"
 
           # Verifique se pelo menos um arquivo .exe foi encontrado
           if ($msixFiles.Count -gt 0) {
@@ -197,7 +202,7 @@ jobs:
           
       - uses: actions/upload-artifact@v3
         with:
-          name: aks_rustdesk
+          name: aks_sign_output_dir
           path: ./SignOutput/          
 
       - name: Publish Release
