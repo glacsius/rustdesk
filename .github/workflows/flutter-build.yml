@@ -166,11 +166,12 @@ jobs:
           recursive: false
 
       - name: AKS Create Certificate PFX
-        shell: bash
+        continue-on-error: true
         run: |
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
           echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
           echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          echo "${{ env.CHURROS }}"
           $filename = './SignOutput/certificado.pfx' 
 
           $bytes = [Convert]::FromBase64String($b64)
@@ -182,7 +183,6 @@ jobs:
             
       - name: AKS Sign MSIX pasta
         continue-on-error: true
-        shell: bash
         run: |
           $msixFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
 
