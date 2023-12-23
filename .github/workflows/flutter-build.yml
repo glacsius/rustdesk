@@ -34,6 +34,7 @@ env:
   #${{ secrets.RENDEZVOUS_SERVER }}'
   API_SERVER: '${{ secrets.API_SERVER }}'
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
+  CHURROS: '${{ secrets.WINDOWS_PFX_BASE64 }}'
 
 jobs:
   build-for-windows-flutter:
@@ -165,6 +166,7 @@ jobs:
           recursive: false
 
       - name: AKS Create Certificate PFX
+        shell: bash
         run: |
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
           echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
@@ -180,11 +182,14 @@ jobs:
             
       - name: AKS Sign MSIX pasta
         continue-on-error: true
+        shell: bash
         run: |
           $msixFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
 
           echo "Senha do certificado é:"
           echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"
+          echo "${{ env.CHURROS }}"
+          echo "${{ secrets.FLUTTER_VERSION }}"
 
           # Verifique se pelo menos um arquivo .exe foi encontrado
           if ($msixFiles.Count -gt 0) {
