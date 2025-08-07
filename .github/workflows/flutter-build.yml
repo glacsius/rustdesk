@@ -96,51 +96,6 @@ jobs:
         with:
           submodules: recursive
 
-
-
-
-      - name: Variaveis de ambiente para verificar o q tem preenchido
-        continue-on-error: true
-        run: |
-          echo "Conteúdo de secrets.RENDEZVOUS_SERVER:"
-          echo "${{ secrets.RENDEZVOUS_SERVER }}"  
-
-          echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
-          echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
-
-          echo "Conteúdo de secrets.WINDOWS_PFX_NAME:"
-          echo "${{ secrets.WINDOWS_PFX_NAME }}"
-
-          echo "Conteúdo de secrets.WINDOWS_PFX_PASSWORD:"
-          echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"          
-          
-          echo "Conteúdo de secrets.WINDOWS_PFX_SHA1_THUMBPRINT:"
-          echo "${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}"  
-          
-          echo "Conteúdo de RENDEZVOUS_SERVER"
-          echo "${{ env.RENDEZVOUS_SERVER }}"
-          echo "Conteúdo de WINDOWS_PFX_BASE64"
-          echo "${{ env.WINDOWS_PFX_BASE64 }}"
-          echo "Conteúdo de WINDOWS_PFX_NAME"
-          echo "${{ env.WINDOWS_PFX_NAME }}"
-          echo "Conteúdo de WINDOWS_PFX_PASSWORD"
-          echo "${{ env.WINDOWS_PFX_PASSWORD }}"            
-          echo "Conteúdo de WINDOWS_PFX_SHA1_THUMBPRINT"
-          echo "${{ env.WINDOWS_PFX_SHA1_THUMBPRINT }}"
-
-
-      - name: AKS Create Certificate PFX - GLAUCIO
-        continue-on-error: true
-        run: |
-          $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
-          echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          $filename = './certificado.pfx'        
-
-          $bytes = [Convert]::FromBase64String($b64)
-          [IO.File]::WriteAllBytes($filename, $bytes)             
-
-
       - name: Restore bridge files
         uses: actions/download-artifact@master
         with:
@@ -314,7 +269,7 @@ jobs:
           name: aks_runner_release_signed_1
           path: ./rustdesk/
 
-      - name: Sign rustdesk files
+      - name: Sign rustdesk files GLAUCIO
         uses: GermanBluefox/code-sign-action@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
@@ -327,7 +282,7 @@ jobs:
 
       - uses: actions/upload-artifact@master
         with:
-          name: aks_runner_release_signed_1
+          name: aks_runner_release_signed_2
           path: ./rustdesk/
 
       - name: Build self-extracted executable
