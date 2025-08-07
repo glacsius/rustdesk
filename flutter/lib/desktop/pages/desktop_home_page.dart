@@ -398,11 +398,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         children: [
           Column(
             children: [
+              Text(
+                translate("AKS Sistemas"),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              SizedBox(
+                height: 10.0,
+              ),
               if (!isOutgoingOnly)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    translate("GLA Your Desktop GLA"),
+                    translate("Your Desktop"),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
