@@ -260,7 +260,7 @@ jobs:
           folder: './rustdesk/'
           recursive: true
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@master
         with:
           name: aks_runner_release_signed_1
           path: ./flutter/build/windows/runner/Release/           
@@ -276,7 +276,7 @@ jobs:
           folder: './flutter/build/windows/runner/Release/'
           recursive: true        
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@master
         with:
           name: aks_runner_release_signed_1
           path: ./flutter/build/windows/runner/Release/           
@@ -293,7 +293,7 @@ jobs:
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@master
         with:
           name: signoutput_1
           path: ./SignOutput            
@@ -308,7 +308,7 @@ jobs:
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@master
         with:
           name: signoutput_2
           path: ./SignOutput          
@@ -336,7 +336,7 @@ jobs:
           folder: './SignOutput'
           recursive: false
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@master
         with:
           name: signoutput_3
           path: ./SignOutput      
@@ -362,9 +362,9 @@ jobs:
           } else {
             Write-Output "Nenhum arquivo .msix encontrado."
             exit 1
-          }          
-          
-      - uses: actions/upload-artifact@v3
+          }
+
+      - uses: actions/upload-artifact@master
         with:
           name: aks_sign_output_dir
           path: ./SignOutput/           
