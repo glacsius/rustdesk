@@ -92,6 +92,27 @@ jobs:
         with:
           submodules: recursive
 
+
+
+
+      - name: Variaveis de ambiente para verificar o q tem preenchido
+        continue-on-error: true
+        run: |
+          echo "Conteúdo de secrets.RENDEZVOUS_SERVER:"
+          echo "${{ secrets.RENDEZVOUS_SERVER }}"  
+
+          echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
+          echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
+
+          echo "Conteúdo de secrets.WINDOWS_PFX_NAME:"
+          echo "${{ secrets.WINDOWS_PFX_NAME }}"
+
+          echo "Conteúdo de secrets.WINDOWS_PFX_PASSWORD:"
+          echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"          
+          
+          echo "Conteúdo de secrets.WINDOWS_PFX_SHA1_THUMBPRINT:"
+          echo "${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}"          
+
       - name: Restore bridge files
         uses: actions/download-artifact@master
         with:
@@ -263,7 +284,7 @@ jobs:
       - uses: actions/upload-artifact@master
         with:
           name: aks_runner_release_signed_1
-          path: ./flutter/build/windows/runner/Release/           
+          path: ./rustdesk/
 
       - name: Sign rustdesk files
         uses: GermanBluefox/code-sign-action@v7
@@ -272,14 +293,14 @@ jobs:
           certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          certificatename: '${{ secrets.CERTNAME }}'
-          folder: './flutter/build/windows/runner/Release/'
-          recursive: true        
+          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
+          folder: './rustdesk/'
+          recursive: true  
 
       - uses: actions/upload-artifact@master
         with:
           name: aks_runner_release_signed_1
-          path: ./flutter/build/windows/runner/Release/           
+          path: ./rustdesk/
 
       - name: Build self-extracted executable
         shell: bash
@@ -303,7 +324,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           pushd ./libs/portable
-          python3 ./generate.py -f ../../flutter/build/windows/runner/Release/ -o . -e ../../flutter/build/windows/runner/Release/rustdesk.exe
+          python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
           popd
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
