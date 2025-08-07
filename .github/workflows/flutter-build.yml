@@ -240,7 +240,6 @@ jobs:
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
           echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
           echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          echo "${{ env.CHURROS }}"
           $filename = './SignOutput/certificado.pfx' 
 
           $bytes = [Convert]::FromBase64String($b64)
@@ -349,7 +348,6 @@ jobs:
 
           echo "Senha do certificado é:"
           echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"
-          echo "${{ env.CHURROS }}"
           echo "${{ secrets.FLUTTER_VERSION }}"
 
           # Verifique se pelo menos um arquivo .exe foi encontrado
