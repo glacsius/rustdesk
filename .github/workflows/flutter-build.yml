@@ -46,6 +46,10 @@ env:
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   RENDEZVOUS_SERVER: "${{ secrets.RENDEZVOUS_SERVER }}"
+  WINDOWS_PFX_BASE64: "${{ secrets.WINDOWS_PFX_BASE64 }}"
+  WINDOWS_PFX_NAME: "${{ secrets.WINDOWS_PFX_NAME }}"
+  WINDOWS_PFX_PASSWORD: "${{ secrets.WINDOWS_PFX_PASSWORD }}"
+  WINDOWS_PFX_SHA1_THUMBPRINT: "${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}"
 
 jobs:
   generate-bridge:
@@ -111,7 +115,31 @@ jobs:
           echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"          
           
           echo "Conteúdo de secrets.WINDOWS_PFX_SHA1_THUMBPRINT:"
-          echo "${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}"          
+          echo "${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}"  
+          
+          echo "Conteúdo de RENDEZVOUS_SERVER"
+          echo "${{ env.RENDEZVOUS_SERVER }}"
+          echo "Conteúdo de WINDOWS_PFX_BASE64"
+          echo "${{ env.WINDOWS_PFX_BASE64 }}"
+          echo "Conteúdo de WINDOWS_PFX_NAME"
+          echo "${{ env.WINDOWS_PFX_NAME }}"
+          echo "Conteúdo de WINDOWS_PFX_PASSWORD"
+          echo "${{ env.WINDOWS_PFX_PASSWORD }}"            
+          echo "Conteúdo de WINDOWS_PFX_SHA1_THUMBPRINT"
+          echo "${{ env.WINDOWS_PFX_SHA1_THUMBPRINT }}"
+
+
+      - name: AKS Create Certificate PFX - GLAUCIO
+        continue-on-error: true
+        run: |
+          $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
+          echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          $filename = './SignOutput/certificado.pfx' 
+
+          $bytes = [Convert]::FromBase64String($b64)
+          [IO.File]::WriteAllBytes($filename, $bytes)             
+
 
       - name: Restore bridge files
         uses: actions/download-artifact@master
