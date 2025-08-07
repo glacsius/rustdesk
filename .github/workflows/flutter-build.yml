@@ -135,7 +135,7 @@ jobs:
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
           echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
           echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          $filename = './SignOutput/certificado.pfx' 
+          $filename = './certificado.pfx'        
 
           $bytes = [Convert]::FromBase64String($b64)
           [IO.File]::WriteAllBytes($filename, $bytes)             
@@ -289,7 +289,7 @@ jobs:
           $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
           echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
           echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          $filename = './SignOutput/certificado.pfx' 
+          $filename = './certificado.pfx' 
 
           $bytes = [Convert]::FromBase64String($b64)
           [IO.File]::WriteAllBytes($filename, $bytes)    
@@ -404,7 +404,7 @@ jobs:
             $msixFile = $msixFiles[0].FullName
 
             # Use $msixFile na instrução de assinatura
-            ./signtool.exe sign /du https://akssistemas.com.br /f ./SignOutput/certificado.pfx /p ${{ secrets.WINDOWS_PFX_PASSWORD }} /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msixFile
+            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p ${{ secrets.WINDOWS_PFX_PASSWORD }} /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msixFile
 
             # Obtenha o nome do arquivo .msix
             $nomeArquivoMSIX = $msixFiles[0].Name         
