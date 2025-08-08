@@ -5,14 +5,11 @@ on:
   workflow_dispatch:    
 
 jobs:
-  verify-cert:
-    name: Create and verify PFX
+  create-cert:
+    name: Create PFX and upload
     runs-on: windows-2022
     steps:
-      - name: Check out repository (optional)
-        uses: actions/checkout@v4
-
-      - name: Create PFX from base64 and verify password
+      - name: Create PFX from base64
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -49,11 +46,44 @@ jobs:
           $fileSize = (Get-Item $filename).Length
           Write-Host "Tamanho do arquivo de certificado: $fileSize bytes"
 
+      - name: Upload PFX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pfx-certificate
+          path: certificado.pfx
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-cert:
+    name: Download PFX and verify password
+    runs-on: windows-2022
+    needs: create-cert
+    steps:
+      - name: Download PFX artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pfx-certificate
+          path: .
+
+      - name: Verify PFX password and validity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $filename = 'certificado.pfx'
+          if (-not (Test-Path $filename)) {
+            Write-Error "Arquivo PFX não encontrado após download do artifact!"
+            exit 1
+          }
+
           $password = "${{ secrets.WINDOWS_PFX_PASSWORD }}"
           if ([string]::IsNullOrWhiteSpace($password)) {
             Write-Error "WINDOWS_PFX_PASSWORD está vazio ou não definido! Configure o secret no repositório/organização."
             exit 1
           }
+
+          $fileSize = (Get-Item $filename).Length
+          Write-Host "Tamanho do arquivo de certificado: $fileSize bytes"
 
           Write-Host "Testando certificado com a senha fornecida..."
           $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
@@ -87,14 +117,12 @@ jobs:
           )
           $lines | Out-File -FilePath 'certificate-info.txt' -Encoding UTF8
 
-          Write-Host "✅ Certificado validado com sucesso. Artefatos serão enviados."
+          Write-Host "✅ Certificado validado com sucesso."
 
-      - name: Upload certificate and info
+      - name: Upload verification info
         uses: actions/upload-artifact@v4
         with:
-          name: certificate-verification
-          path: |
-            certificado.pfx
-            certificate-info.txt
+          name: certificate-info
+          path: certificate-info.txt
           if-no-files-found: error
           retention-days: 7
