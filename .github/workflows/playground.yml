@@ -46,25 +46,6 @@ jobs:
           $fileSize = (Get-Item $filename).Length
           Write-Host "Tamanho do arquivo de certificado: $fileSize bytes"
 
-      - name: Upload PFX artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pfx-certificate
-          path: certificado.pfx
-          if-no-files-found: error
-          retention-days: 7
-
-  verify-cert:
-    name: Download PFX and verify password
-    runs-on: windows-2022
-    needs: create-cert
-    steps:
-      - name: Download PFX artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: pfx-certificate
-          path: .
-
       - name: Verify PFX password and validity
         shell: pwsh
         run: |
@@ -101,27 +82,9 @@ jobs:
             exit 1
           }
 
-          # Gerar arquivo de informações do certificado (sem expor a senha)
-          $lines = @(
-            'Informações do Certificado PFX',
-            '================================',
-            "Data de teste: $(Get-Date -Format s)",
-            "Subject: $($cert.Subject)",
-            "Issuer: $($cert.Issuer)",
-            "Thumbprint: $($cert.Thumbprint)",
-            "Valid From: $($cert.NotBefore)",
-            "Valid To: $($cert.NotAfter)",
-            "Tamanho do arquivo: $fileSize bytes",
-            'Status: Válido e testado com sucesso'
-          )
-          $lines | Out-File -FilePath 'certificate-info.txt' -Encoding UTF8
 
+          Write-Host "Valid From: $($cert.NotBefore)"
+          Write-Host "Valid To: $($cert.NotAfter)"
           Write-Host "✅ Certificado validado com sucesso."
 
-      - name: Upload verification info
-        uses: actions/upload-artifact@v4
-        with:
-          name: certificate-info
-          path: certificate-info.txt
-          if-no-files-found: error
-          retention-days: 7
+
