@@ -98,6 +98,7 @@ jobs:
             Write-Error "Verifique se a senha está correta e se o certificado é válido."
             exit 1
           }
+        shell: pwsh            
 
       - name: Upload Certificate for Verification
         uses: actions/upload-artifact@master
