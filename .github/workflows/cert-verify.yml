@@ -1,11 +1,8 @@
 name: Verify Windows Code Signing Certificate
 
 on:
-  workflow_dispatch:
-    inputs:
-      note:
-        description: "Runs a lightweight job to build the PFX from secrets, verify the password, and upload artifacts"
-        required: false
+  workflow_call:
+  workflow_dispatch:    
 
 jobs:
   verify-cert:
