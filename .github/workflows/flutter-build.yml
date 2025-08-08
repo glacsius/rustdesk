@@ -260,7 +260,20 @@ jobs:
         shell: bash
 
       - name: Build rustdesk
+        env:
+          RENDEZVOUS_SERVER: ${{ secrets.RENDEZVOUS_SERVER }}
+          API_SERVER: ${{ secrets.API_SERVER }}
+          RELAY_SERVER: ${{ secrets.RELAY_SERVER }}
         run: |
+          # Verificar se RENDEZVOUS_SERVER foi configurado
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.RENDEZVOUS_SERVER }}")) {
+            Write-Host "❌ RENDEZVOUS_SERVER está vazio ou não configurado"
+          } else {
+            $server = "${{ secrets.RENDEZVOUS_SERVER }}"
+            $preview = if ($server.Length -gt 10) { $server.Substring(0, 10) + "..." } else { $server }
+            Write-Host "✅ RENDEZVOUS_SERVER configurado: $preview"
+          }
+          
           # Windows: build RustDesk
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
