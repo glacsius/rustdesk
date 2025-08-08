@@ -86,12 +86,11 @@ jobs:
           Write-Host "Tamanho do arquivo de certificado: $fileSize bytes"
 
           Write-Host "Testando certificado com a senha fornecida..."
-          $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
           $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
           try {
-            $cert.Import($filename, $password, $flags)
+            $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($filename, $password, $flags)
           } catch {
-            Write-Error "❌ Erro ao importar PFX com a senha fornecida (senha incorreta ou PFX inválido): $($_.Exception.Message)"
+            Write-Error "❌ Erro ao carregar PFX com a senha fornecida (senha incorreta ou PFX inválido): $($_.Exception.Message)"
             exit 1
           }
 
