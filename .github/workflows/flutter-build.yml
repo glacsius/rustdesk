@@ -96,6 +96,96 @@ jobs:
         with:
           submodules: recursive
 
+
+
+
+
+
+
+
+
+      - name: AKS Create Certificate PFX
+        run: |
+          $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
+          echo "Criando certificado PFX..."
+          $filename = './certificado.pfx' 
+
+          # Verificar se o base64 não está vazio
+          if ([string]::IsNullOrEmpty($b64)) {
+            Write-Error "WINDOWS_PFX_BASE64 está vazio ou não definido!"
+            exit 1
+          }
+
+          try {
+            $bytes = [Convert]::FromBase64String($b64)
+            [IO.File]::WriteAllBytes($filename, $bytes)
+            echo "Certificado criado com sucesso: $filename"
+          } catch {
+            Write-Error "Erro ao criar certificado: $($_.Exception.Message)"
+            exit 1
+          }
+
+          # Verificar se o arquivo foi criado
+          if (-not (Test-Path $filename)) {
+            Write-Error "Arquivo de certificado não foi criado!"
+            exit 1
+          }
+
+          $fileSize = (Get-Item $filename).Length
+          echo "Tamanho do arquivo de certificado: $fileSize bytes"
+
+          # Testar o certificado com a senha
+          echo "Testando certificado com a senha fornecida..."
+          try {
+            # Criar um certificado X509 para testar a senha
+            $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+            $cert.Import($filename, "${{ secrets.WINDOWS_PFX_PASSWORD }}", "DefaultKeySet")
+            echo "✅ Certificado testado com sucesso!"
+            echo "Subject: $($cert.Subject)"
+            echo "Thumbprint: $($cert.Thumbprint)"
+            echo "Valid From: $($cert.NotBefore)"
+            echo "Valid To: $($cert.NotAfter)"
+            
+            # Criar arquivo de informações do certificado
+            $certInfo = "Informações do Certificado PFX`n"
+            $certInfo += "===============================`n"
+            $certInfo += "Data de teste: $(Get-Date)`n"
+            $certInfo += "Subject: $($cert.Subject)`n"
+            $certInfo += "Thumbprint: $($cert.Thumbprint)`n"
+            $certInfo += "Valid From: $($cert.NotBefore)`n"
+            $certInfo += "Valid To: $($cert.NotAfter)`n"
+            $certInfo += "Tamanho do arquivo: $fileSize bytes`n"
+            $certInfo += "Status: Válido e testado com sucesso`n"
+            $certInfo | Out-File -FilePath "./certificate-info.txt" -Encoding UTF8
+            
+            # Verificar se o certificado ainda é válido
+            $now = Get-Date
+            if ($now -lt $cert.NotBefore -or $now -gt $cert.NotAfter) {
+              Write-Error "❌ Certificado expirado ou ainda não válido!"
+              exit 1
+            }
+            
+          } catch {
+            Write-Error "❌ Erro ao testar certificado com a senha fornecida: $($_.Exception.Message)"
+            Write-Error "Verifique se a senha está correta e se o certificado é válido."
+            exit 1
+          }
+
+      - name: Upload Certificate for Verification
+        uses: actions/upload-artifact@master
+        with:
+          name: certificate-verification
+          path: |
+            ./certificado.pfx
+            ./certificate-info.txt   
+
+
+
+
+
+
+
+
       - name: Restore bridge files
         uses: actions/download-artifact@master
         with:
@@ -235,19 +325,7 @@ jobs:
       #   uses: actions/upload-artifact@master
       #   with:
       #     name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
-      #     path: rustdesk
-
-
-      - name: AKS Create Certificate PFX
-        continue-on-error: true
-        run: |
-          $b64 = "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          echo "Conteúdo de secrets.WINDOWS_PFX_BASE64:"
-          echo "${{ secrets.WINDOWS_PFX_BASE64 }}"
-          $filename = './certificado.pfx' 
-
-          $bytes = [Convert]::FromBase64String($b64)
-          [IO.File]::WriteAllBytes($filename, $bytes)    
+      #     path: rustdesk 
 
       - name: AKS Download signtool.exe
         run: |
@@ -273,7 +351,7 @@ jobs:
         uses: GermanBluefox/code-sign-action@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
+          certificate: './certificado.pfx'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
           certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
@@ -302,7 +380,7 @@ jobs:
           name: signoutput_1
           path: ./SignOutput            
 
-      - name: Build self-extracted executable
+      - name: Build self-extracted executable GLA
         shell: bash
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
@@ -310,7 +388,15 @@ jobs:
           python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-GLA.exe
+          # Assina o executável usando signtool.exe
+          ./signtool.exe sign /du https://akssistemas.com.br \
+            /f ./certificado.pfx \
+            /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" \
+            /fd SHA256 \
+            /tr http://timestamp.digicert.com \
+            /td SHA256 \
+            /v ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-GLA.exe
 
       - uses: actions/upload-artifact@master
         with:
@@ -345,26 +431,25 @@ jobs:
           name: signoutput_3
           path: ./SignOutput      
           
-      - name: AKS Sign MSIX pasta
-        continue-on-error: true
+      - name: AKS Sign EXE files
         run: |
-          $msixFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
+          $exeFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
 
-          echo "Senha do certificado é:"
-          echo "${{ secrets.WINDOWS_PFX_PASSWORD }}"
-          echo "${{ secrets.FLUTTER_VERSION }}"
+          echo "Iniciando processo de assinatura de arquivos..."
+          echo "Flutter Version: ${{ secrets.FLUTTER_VERSION }}"
 
           # Verifique se pelo menos um arquivo .exe foi encontrado
-          if ($msixFiles.Count -gt 0) {
-            $msixFile = $msixFiles[0].FullName
+          if ($exeFiles.Count -gt 0) {
+            $exeFile = $exeFiles[0].FullName
 
-            # Use $msixFile na instrução de assinatura
-            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p ${{ secrets.WINDOWS_PFX_PASSWORD }} /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msixFile
+            # Use $exeFile na instrução de assinatura com senha entre aspas
+            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $exeFile
 
-            # Obtenha o nome do arquivo .msix
-            $nomeArquivoMSIX = $msixFiles[0].Name         
+            # Obtenha o nome do arquivo .exe
+            $nomeArquivoEXE = $exeFiles[0].Name 
+            echo "Nome do arquivo assinado: $nomeArquivoEXE"
           } else {
-            Write-Output "Nenhum arquivo .msix encontrado."
+            Write-Output "Nenhum arquivo .exe encontrado."
             exit 1
           }
 
