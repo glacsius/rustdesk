@@ -136,14 +136,6 @@ jobs:
           $fileSize = (Get-Item $filename).Length
           Write-Host "Tamanho do arquivo de certificado: $fileSize bytes"
 
-
-      - name: Upload Certificate for Verification
-        uses: actions/upload-artifact@master
-        with:
-          name: certificate-verification
-          path: ./certificado.pfx
-
-
       - name: Verify PFX password and validity
         shell: pwsh
         run: |
@@ -351,31 +343,16 @@ jobs:
         uses: GermanBluefox/code-sign-action@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
+          certificate: './certificado.pfx'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
+          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
           folder: './rustdesk/'
           recursive: true
 
       - uses: actions/upload-artifact@master
         with:
           name: aks_runner_release_signed_1
-          path: ./rustdesk/
-
-      - name: Sign rustdesk files GLAUCIO
-        uses: GermanBluefox/code-sign-action@v7
-        if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          certificate: './certificado.pfx'
-          password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
-          certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
-          folder: './rustdesk/'
-          recursive: true  
-
-      - uses: actions/upload-artifact@master
-        with:
-          name: aks_runner_release_signed_2
           path: ./rustdesk/
 
       - name: Build self-extracted executable
