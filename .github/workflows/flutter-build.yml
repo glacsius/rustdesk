@@ -366,16 +366,12 @@ jobs:
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
-      - uses: actions/upload-artifact@master
-        with:
-          name: signoutput_1
-          path: ./SignOutput
           
       - name: Sign self-extracted executable
         uses: GermanBluefox/code-sign-action@v7
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
-          certificate: './certificado.pfx'
+          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
           certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
@@ -402,38 +398,6 @@ jobs:
           name: signoutput_1_signed_glaucio
           path: ./SignOutput         
 
-      - name: Build self-extracted executable GLA
-        shell: bash
-        if: env.UPLOAD_ARTIFACT == 'true'
-        run: |
-          # Verificar se o certificado existe antes de assinar
-          if [ ! -f "./certificado.pfx" ]; then
-            echo "❌ Erro: Arquivo certificado.pfx não encontrado!"
-            ls -la ./ | grep -i cert || echo "Nenhum arquivo de certificado encontrado"
-            exit 1
-          fi
-          
-          pushd ./libs/portable
-          python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
-          popd
-          mkdir -p ./SignOutput2
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput2/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-GLA.exe
-
-          # Verificar novamente se o certificado ainda existe
-          if [ ! -f "./certificado.pfx" ]; then
-            echo "❌ Erro: Arquivo certificado.pfx foi perdido durante o processo!"
-            exit 1
-          fi
-
-          # Assina o executável usando signtool.exe
-          ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v ./SignOutput2/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-GLA.exe
-
-      - uses: actions/upload-artifact@master
-        with:
-          name: signoutput_2
-          path: ./SignOutput2 
-
-
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
@@ -454,6 +418,7 @@ jobs:
           certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
           password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
           certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
+          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
           folder: './SignOutput'
           recursive: false
 

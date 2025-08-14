@@ -113,6 +113,15 @@ pub fn global_init() -> bool {
             crate::server::wayland::init();
         }
     }
+    
+    // Configurar servidor de encontro baseado na variável de ambiente de build
+    if let Some(rendezvous_server) = option_env!("RENDEZVOUS_SERVER") {
+        if !rendezvous_server.is_empty() {
+            log::info!("Setting PROD_RENDEZVOUS_SERVER from build environment: {}", rendezvous_server);
+            *hbb_common::config::PROD_RENDEZVOUS_SERVER.write().unwrap() = rendezvous_server.to_owned();
+        }
+    }
+    
     true
 }
 
