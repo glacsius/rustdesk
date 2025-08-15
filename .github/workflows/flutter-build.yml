@@ -368,22 +368,6 @@ jobs:
 
           
       - name: Sign self-extracted executable
-        uses: GermanBluefox/code-sign-action@v7
-        if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
-          password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
-          certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
-          folder: './SignOutput'
-          recursive: true 
-          
-      - uses: actions/upload-artifact@master
-        with:
-          name: signoutput_1_signed
-          path: ./SignOutput  
-          
-      - name: Sign self-extracted executable GLAUCIO
         run: |
           if (-not (Test-Path "./certificado.pfx")) {
             Write-Error "❌ Erro: Arquivo certificado.pfx não encontrado!"
@@ -395,8 +379,8 @@ jobs:
 
       - uses: actions/upload-artifact@master
         with:
-          name: signoutput_1_signed_glaucio
-          path: ./SignOutput         
+          name: rustdesk_signed_exe
+          path: ./SignOutput
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
@@ -411,21 +395,29 @@ jobs:
           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi
           sha256sum ../../SignOutput/rustdesk-*.msi
 
-      - name: Sign rustdesk self-extracted file
-        uses: GermanBluefox/code-sign-action@v7
+      - name: Sign rustdesk self-extracted file and MSI
         if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
-          password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
-          certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
-          folder: './SignOutput'
-          recursive: false
+        run: |
+          if (-not (Test-Path "./certificado.pfx")) {
+            Write-Error "❌ Erro: Arquivo certificado.pfx não encontrado!"
+            Get-ChildItem -Path "./" -Filter "*cert*" | Write-Host
+            exit 1
+          }
+          
+          # Sign MSI file
+          $msiFile = "./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi"
+          if (Test-Path $msiFile) {
+            Write-Host "🔐 Assinando arquivo MSI: $msiFile"
+            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msiFile
+          } else {
+            Write-Warning "⚠️ Arquivo MSI não encontrado: $msiFile"
+          }
+        shell: pwsh
 
       - uses: actions/upload-artifact@master
         with:
-          name: signoutput_3
-          path: ./SignOutput      
+          name: rustdesk_signed_msi
+          path: ./SignOutput
           
       - name: AKS Sign EXE files
         run: |
