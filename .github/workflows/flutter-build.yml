@@ -374,110 +374,143 @@ jobs:
             Get-ChildItem -Path "./" -Filter "*cert*" | Write-Host
             exit 1
           }
-          ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+          ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr https://timestamp.digicert.com /td SHA256 /v ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
         shell: pwsh
+
+      - name: Verify signature (non-fatal)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $exe = "./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Host "⚠️ Arquivo não encontrado: $exe"
+            exit 0
+          }
+          Write-Host "⏳ Verificando assinatura em: $exe"
+          ./signtool.exe verify /pa /v $exe
+          Write-Host "---- Get-AuthenticodeSignature ----"
+          Get-AuthenticodeSignature $exe | Format-List *
 
       - uses: actions/upload-artifact@master
         with:
           name: rustdesk_signed_exe
           path: ./SignOutput
 
-      - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Build msi
-        if: env.UPLOAD_ARTIFACT == 'true'
-        run: |
-          pushd ./res/msi
-          python preprocess.py --arp -d ../../rustdesk
-          nuget restore msi.sln
-          msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
-          mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi
-          sha256sum ../../SignOutput/rustdesk-*.msi
-
-      - name: Sign rustdesk self-extracted file and MSI
-        if: env.UPLOAD_ARTIFACT == 'true'
-        run: |
-          if (-not (Test-Path "./certificado.pfx")) {
-            Write-Error "❌ Erro: Arquivo certificado.pfx não encontrado!"
-            Get-ChildItem -Path "./" -Filter "*cert*" | Write-Host
-            exit 1
-          }
-          
-          # Sign MSI file
-          $msiFile = "./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi"
-          if (Test-Path $msiFile) {
-            Write-Host "🔐 Assinando arquivo MSI: $msiFile"
-            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msiFile
-          } else {
-            Write-Warning "⚠️ Arquivo MSI não encontrado: $msiFile"
-          }
-        shell: pwsh
-
-      - uses: actions/upload-artifact@master
-        with:
-          name: rustdesk_signed_msi
-          path: ./SignOutput
-          
-      - name: AKS Sign EXE files
-        run: |
-          # Verificar se o certificado existe
-          if (-not (Test-Path "./certificado.pfx")) {
-            Write-Error "❌ Erro: Arquivo certificado.pfx não encontrado!"
-            Get-ChildItem -Path "./" -Filter "*cert*" | Write-Host
-            exit 1
-          }
-          
-          $exeFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
-
-          echo "Iniciando processo de assinatura de arquivos..."
-          echo "Flutter Version: ${{ secrets.FLUTTER_VERSION }}"
-
-          # Verifique se pelo menos um arquivo .exe foi encontrado
-          if ($exeFiles.Count -gt 0) {
-            $exeFile = $exeFiles[0].FullName
-
-            # Use $exeFile na instrução de assinatura com senha entre aspas
-            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $exeFile
-
-            # Obtenha o nome do arquivo .exe
-            $nomeArquivoEXE = $exeFiles[0].Name 
-            echo "Nome do arquivo assinado: $nomeArquivoEXE"
-          } else {
-            Write-Output "Nenhum arquivo .exe encontrado."
-          }
-
-          # Assinar também o arquivo .msi, se existir
-          $msiFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.msi' | Sort-Object LastWriteTime -Descending
-          if ($msiFiles.Count -gt 0) {
-            $msiFile = $msiFiles[0].FullName
-            ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msiFile
-            $nomeArquivoMSI = $msiFiles[0].Name
-            echo "Nome do MSI assinado: $nomeArquivoMSI"
-          } else {
-            Write-Output "Nenhum arquivo .msi encontrado."
-          }
-
-          if ($exeFiles.Count -eq 0 -and $msiFiles.Count -eq 0) {
-            Write-Output "Nenhum arquivo para assinar foi encontrado (nem .exe nem .msi)."
-            exit 1
-          }
-        shell: pwsh
-
-      - uses: actions/upload-artifact@master
-        with:
-          name: aks_sign_output_dir
-          path: ./SignOutput/           
-
       - name: Publish Release
         uses: softprops/action-gh-release@v1
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
           prerelease: true
-          tag_name: ${{ env.TAG_NAME }}
+          tag_name: aks
           files: |
-            ./SignOutput/rustdesk-*.msi
-            ./SignOutput/rustdesk-*.exe
+            ./SignOutput/rustdesk-*.exe          
+
+      # - name: Add MSBuild to PATH
+      #   uses: microsoft/setup-msbuild@v2
+
+      # - name: Build msi
+      #   if: env.UPLOAD_ARTIFACT == 'true'
+      #   run: |
+      #     pushd ./res/msi
+      #     python preprocess.py --arp -d ../../rustdesk
+      #     nuget restore msi.sln
+      #     msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
+      #     mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi
+      #     sha256sum ../../SignOutput/rustdesk-*.msi
+
+      # - name: Sign rustdesk self-extracted file and MSI
+      #   if: env.UPLOAD_ARTIFACT == 'true'
+      #   run: |
+      #     if (-not (Test-Path "./certificado.pfx")) {
+      #       Write-Error "❌ Erro: Arquivo certificado.pfx não encontrado!"
+      #       Get-ChildItem -Path "./" -Filter "*cert*" | Write-Host
+      #       exit 1
+      #     }
+          
+      #     # Sign MSI file
+      #     $msiFile = "./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi"
+      #     if (Test-Path $msiFile) {
+      #       Write-Host "🔐 Assinando arquivo MSI: $msiFile"
+      #       ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msiFile
+      #     } else {
+      #       Write-Warning "⚠️ Arquivo MSI não encontrado: $msiFile"
+      #     }
+      #   shell: pwsh
+
+      # - uses: actions/upload-artifact@master
+      #   with:
+      #     name: rustdesk_signed_msi
+      #     path: ./SignOutput
+          
+      # - name: AKS Sign EXE files
+      #   run: |
+      #     # Verificar se o certificado existe
+      #     if (-not (Test-Path "./certificado.pfx")) {
+      #       Write-Error "❌ Erro: Arquivo certificado.pfx não encontrado!"
+      #       Get-ChildItem -Path "./" -Filter "*cert*" | Write-Host
+      #       exit 1
+      #     }
+          
+      #     $exeFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.exe' | Sort-Object LastWriteTime -Descending
+
+      #     echo "Iniciando processo de assinatura de arquivos..."
+      #     echo "Flutter Version: ${{ secrets.FLUTTER_VERSION }}"
+
+      #     # Verifique se pelo menos um arquivo .exe foi encontrado
+      #     if ($exeFiles.Count -gt 0) {
+      #       $exeFile = $exeFiles[0].FullName
+
+      #       # Use $exeFile na instrução de assinatura com senha entre aspas
+      #       ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $exeFile
+
+      #       # Obtenha o nome do arquivo .exe
+      #       $nomeArquivoEXE = $exeFiles[0].Name 
+      #       echo "Nome do arquivo assinado: $nomeArquivoEXE"
+      #     } else {
+      #       Write-Output "Nenhum arquivo .exe encontrado."
+      #     }
+
+      #     # Assinar também o arquivo .msi, se existir
+      #     $msiFiles = Get-ChildItem -Path './SignOutput' -Filter 'rustdesk-*.msi' | Sort-Object LastWriteTime -Descending
+      #     if ($msiFiles.Count -gt 0) {
+      #       $msiFile = $msiFiles[0].FullName
+      #       ./signtool.exe sign /du https://akssistemas.com.br /f ./certificado.pfx /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $msiFile
+      #       $nomeArquivoMSI = $msiFiles[0].Name
+      #       echo "Nome do MSI assinado: $nomeArquivoMSI"
+      #     } else {
+      #       Write-Output "Nenhum arquivo .msi encontrado."
+      #     }
+
+      #     if ($exeFiles.Count -eq 0 -and $msiFiles.Count -eq 0) {
+      #       Write-Output "Nenhum arquivo para assinar foi encontrado (nem .exe nem .msi)."
+      #       exit 1
+      #     }
+      #   shell: pwsh
+
+      # - uses: actions/upload-artifact@master
+      #   with:
+      #     name: aks_sign_output_dir
+      #     path: ./SignOutput/           
+
+      # - name: Publish Release
+      #   uses: softprops/action-gh-release@v1
+      #   if: env.UPLOAD_ARTIFACT == 'true'
+      #   with:
+      #     prerelease: true
+      #     tag_name: ${{ env.TAG_NAME }}
+      #     files: |
+      #       ./SignOutput/rustdesk-*.msi
+      #       ./SignOutput/rustdesk-*.exe
+
+
+
+
+
+
+
+
+
+
 
   # build-for-macOS-arm64-selfhost:
   #   # use build-for-macOS instead

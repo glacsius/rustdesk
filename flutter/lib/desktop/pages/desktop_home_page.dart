@@ -398,13 +398,42 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         children: [
           Column(
             children: [
-              Text(
-                translate("AKS Sistemas"),
-                style: Theme.of(context).textTheme.titleLarge,
+              // Show company/app label and the configured ID Server (if any)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "AKS Sistemas",
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  // display the configured custom rendezvous server (idServer)
+                  Builder(builder: (ctx) {
+                    try {
+                      final idServer = bind.mainGetOptionSync(
+                          key: 'custom-rendezvous-server');
+                      if (idServer != null && idServer.isNotEmpty) {
+                        return Text(
+                          idServer,
+                          style: Theme.of(ctx)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontSize: 12),
+                        );
+                      }
+                    } catch (e) {
+                      // ignore and don't render idServer
+                    }
+                    return SizedBox.shrink();
+                  })
+                ],
               ),
               SizedBox(
                 height: 10.0,
               ),
+
               if (!isOutgoingOnly)
                 Align(
                   alignment: Alignment.centerLeft,

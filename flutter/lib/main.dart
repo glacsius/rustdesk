@@ -126,6 +126,18 @@ Future<void> initEnv(String appType) async {
   // for convenience, use global FFI on mobile platform
   // focus on multi-ffi on desktop first
   await initGlobalFFI();
+  // If RUSTDESK_ID_SERVER env var is set, fix `custom-rendezvous-server` at startup.
+  // This allows setting the idServer permanently for this run without requiring UI changes.
+  try {
+    final envIdServer = Platform.environment['RUSTDESK_ID_SERVER'];
+    if (envIdServer != null && envIdServer.isNotEmpty) {
+      await bind.mainSetOption(
+          key: 'custom-rendezvous-server', value: envIdServer);
+      debugPrint('custom-rendezvous-server fixed from env: $envIdServer');
+    }
+  } catch (e) {
+    debugPrint('failed to set custom-rendezvous-server at init: $e');
+  }
   // await Firebase.initializeApp();
   _registerEventHandler();
   // Update the system theme.
